@@ -1,0 +1,79 @@
+<mxfile host="Electron">
+  <diagram name="第 1 页" id="Qgnh477QtpL_2gAhTtBb">
+    <mxGraphModel dx="876" dy="585" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="370" width="120" x="110" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Session1" vertex="1">
+          <mxGeometry height="50" width="90" x="125" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Session2" vertex="1">
+          <mxGeometry height="50" width="90" x="125" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Session3" vertex="1">
+          <mxGeometry height="50" width="90" x="125" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-5" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="对话窗口" vertex="1">
+          <mxGeometry height="30" width="85" x="125" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="370" width="350" x="240" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-7" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="聊天框" vertex="1">
+          <mxGeometry height="30" width="60" x="370" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="用户输入内容" vertex="1">
+          <mxGeometry height="25" width="120" x="260" y="192.5" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="客户回复内容" vertex="1">
+          <mxGeometry height="25" width="120" x="440" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-11" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="370" width="180" x="600" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-13" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="助手" vertex="1">
+          <mxGeometry height="30" width="60" x="660" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="输入框" vertex="1">
+          <mxGeometry height="60" width="330" x="250" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="情绪识别" vertex="1">
+          <mxGeometry height="30" width="160" x="610" y="175" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="用户购买的货物1" vertex="1">
+          <mxGeometry height="30" width="160" x="610" y="217.5" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-17" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="用户购买的货物2" vertex="1">
+          <mxGeometry height="30" width="160" x="610" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-19" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="LLM生成话术1" vertex="1">
+          <mxGeometry height="30" width="160" x="610" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-22" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="600" y="310" as="sourcePoint" />
+            <mxPoint x="780" y="310" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-23" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="600" y="211" as="sourcePoint" />
+            <mxPoint x="780" y="211" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-24" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="LLM生成话术2" vertex="1">
+          <mxGeometry height="30" width="160" x="610" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-25" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="LLM生成话术3" vertex="1">
+          <mxGeometry height="30" width="160" x="610" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="zwc1mU5JuXI_YV8RjvyW-26" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="客服输入优化话术内容" vertex="1">
+          <mxGeometry height="60" width="160" x="610" y="460" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
