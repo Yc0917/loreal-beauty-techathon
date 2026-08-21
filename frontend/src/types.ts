@@ -32,6 +32,24 @@ export interface EmotionAnalysisResult {
   attempts: number
 }
 
+export interface EmotionFeedbackPayload {
+  session_id: string
+  scene: string
+  message_count: number
+  messages: Pick<ChatMessage, 'role' | 'text'>[]
+  prediction: EmotionAnalysisResult
+  corrected_emotion: EmotionLabel
+  feedback_note: string
+}
+
+export interface EmotionFeedbackResult {
+  id: number
+  session_id: string
+  predicted_emotion: EmotionLabel
+  corrected_emotion: EmotionLabel
+  created_at: string
+}
+
 export interface IntentEvidence {
   role: '买家' | '客服'
   text: string
@@ -72,6 +90,17 @@ export interface TicketInfo {
   status: string
 }
 
+export interface ReferenceTicketInfo extends TicketInfo {
+  createdAt: string
+}
+
+export interface SimulationTicketCreatePayload {
+  intent: IntentLabel
+  issue: string
+  assignee: string
+  related_order_id: string | null
+}
+
 export interface ConversationSummary {
   id: string
   buyer: string
@@ -92,5 +121,6 @@ export interface ServiceSession extends ConversationSummary {
   messages: ChatMessage[]
   orders: ProductOrder[]
   ticket: TicketInfo
+  referenceTicket: ReferenceTicketInfo | null
   suggestions: string[]
 }
