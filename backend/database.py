@@ -14,6 +14,8 @@
    - ``ticket_overview``：统一不同工单字段的只读视图。
 2. 仿真数据（可写）
    - ``simulation_messages``：客服在演示页面中新发送的消息。
+   - ``emotion_feedback``：客服对情绪识别结果的人工纠正与对话快照。
+   - ``simulation_tickets``：客服确认后创建的本地 Mock 工单。
 3. 展示派生数据（运行时生成）
    - 情绪标签、情绪分数、推荐话术和前端字段命名均由本模块转换生成，
      不回写原始聊天记录。
@@ -28,6 +30,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
@@ -89,6 +92,9 @@ def initialize_database() -> None:
         - ``simulation_messages``：保存演示过程中新增的客服/买家消息。
         - ``idx_simulation_messages_session_created``：支持按会话、时间和自增ID
           顺序读取仿真消息。
+        - ``emotion_feedback``：保存原预测、纠正标签、完整输入和模型元数据。
+        - ``idx_emotion_feedback_session_created``：支持后续按会话导出审核数据。
+        - ``simulation_tickets``：保存本地演示创建的工单，不修改原始工单表。
 
     字段约束：
         - ``session_id`` 必须对应 ``conversations`` 中的真实会话。
@@ -119,6 +125,60 @@ def initialize_database() -> None:
             """
             CREATE INDEX IF NOT EXISTS idx_simulation_messages_session_created
             ON simulation_messages(session_id, created_at, id)
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS emotion_feedback (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                scene TEXT NOT NULL,
+                message_count INTEGER NOT NULL CHECK (message_count > 0),
+                messages_snapshot TEXT NOT NULL,
+                predicted_emotion TEXT NOT NULL
+                    CHECK (predicted_emotion IN ('neutral', 'anxious', 'dissatisfied', 'angry')),
+                corrected_emotion TEXT NOT NULL
+                    CHECK (corrected_emotion IN ('neutral', 'anxious', 'dissatisfied', 'angry')),
+                confidence REAL NOT NULL CHECK (confidence BETWEEN 0 AND 1),
+                confidence_source TEXT NOT NULL,
+                emotion_token_logprobs TEXT NOT NULL,
+                trend TEXT NOT NULL,
+                evidence TEXT NOT NULL,
+                summary TEXT NOT NULL,
+                prompt_version TEXT NOT NULL,
+                attempts INTEGER NOT NULL CHECK (attempts > 0),
+                feedback_note TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (session_id) REFERENCES conversations(session_id)
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_emotion_feedback_session_created
+            ON emotion_feedback(session_id, created_at, id)
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS simulation_tickets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticket_id TEXT UNIQUE,
+                session_id TEXT NOT NULL UNIQUE,
+                related_order_id TEXT,
+                intent TEXT NOT NULL CHECK (
+                    intent IN (
+                        'reship_exchange', 'offline_payment', 'logistics_ticket',
+                        'adverse_reaction', 'after_sales_return'
+                    )
+                ),
+                ticket_category TEXT NOT NULL,
+                issue_type TEXT NOT NULL CHECK (length(issue_type) BETWEEN 1 AND 300),
+                status TEXT NOT NULL DEFAULT '待处理',
+                assignee TEXT NOT NULL CHECK (length(assignee) BETWEEN 1 AND 100),
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (session_id) REFERENCES conversations(session_id)
+            )
             """
         )
         # 更新查询规划器统计信息，使新索引立即参与后续查询计划选择。
@@ -400,6 +460,14 @@ def get_conversation_detail(session_id: str) -> dict[str, Any] | None:
             "SELECT * FROM ticket_overview WHERE session_id = ? ORDER BY created_at DESC",
             (session_id,),
         ).fetchall()
+        simulation_ticket = connection.execute(
+            """
+            SELECT ticket_id, ticket_category, issue_type, status, created_at
+            FROM simulation_tickets
+            WHERE session_id = ?
+            """,
+            (session_id,),
+        ).fetchone()
 
     # 先按原始消息序号构建历史记录，确保数据库中的对话顺序保持不变。
     messages = [
@@ -428,7 +496,9 @@ def get_conversation_detail(session_id: str) -> dict[str, Any] | None:
     scene = conversation["scene_major"] or "其他咨询"
     sub_scene = conversation["scene_minor"] or ""
     emotion = _emotion_for(scene, last_message)
-    first_ticket = ticket_rows[0] if ticket_rows else None
+    # 原始工单创建时间晚于会话结束时间，仅作为评测 Ground truth；当前工单只取 Mock。
+    reference_ticket = ticket_rows[0] if ticket_rows else None
+    current_ticket = simulation_ticket
 
     return {
         "id": conversation["session_id"],
@@ -457,18 +527,29 @@ def get_conversation_detail(session_id: str) -> dict[str, Any] | None:
         ],
         "ticket": (
             {
-                "ticketId": first_ticket["ticket_id"],
-                "category": first_ticket["ticket_category"],
-                "issue": first_ticket["issue_type"],
-                "status": first_ticket["status"],
+                "ticketId": current_ticket["ticket_id"],
+                "category": current_ticket["ticket_category"],
+                "issue": current_ticket["issue_type"],
+                "status": current_ticket["status"],
             }
-            if first_ticket
+            if current_ticket
             else {
                 "ticketId": "暂无",
                 "category": "服务",
                 "issue": "当前会话暂无关联工单",
                 "status": "无需处理",
             }
+        ),
+        "referenceTicket": (
+            {
+                "ticketId": reference_ticket["ticket_id"],
+                "category": reference_ticket["ticket_category"],
+                "issue": reference_ticket["issue_type"],
+                "status": reference_ticket["status"],
+                "createdAt": reference_ticket["created_at"],
+            }
+            if reference_ticket
+            else None
         ),
         "suggestions": _suggestions_for(scene, sub_scene),
     }
@@ -526,27 +607,189 @@ def add_simulation_message(session_id: str, text: str, role: str = "客服") -> 
 
 
 # ---------------------------------------------------------------------------
-# 模块七：演示环境重置
+# 模块七：本地 Mock 工单写入
 # ---------------------------------------------------------------------------
 
 
-def reset_simulation_messages() -> int:
-    """清空全部仿真消息，并返回实际删除前的记录数量。
+class DuplicateTicketError(Exception):
+    """当前会话已经存在 Mock 工单。"""
+
+
+class InvalidRelatedOrderError(Exception):
+    """提交的订单不属于当前会话。"""
+
+
+_MOCK_TICKET_CATEGORIES = {
+    "reship_exchange": "补发换货",
+    "offline_payment": "线下打款",
+    "logistics_ticket": "物流",
+    "adverse_reaction": "不良反应",
+    "after_sales_return": "售后退货",
+}
+
+
+def add_simulation_ticket(
+    *,
+    session_id: str,
+    intent: str,
+    issue: str,
+    assignee: str,
+    related_order_id: str | None,
+) -> dict[str, Any]:
+    """创建一张本地 Mock 工单，并返回前端可直接展示的工单对象。"""
+    created_at = datetime.now().isoformat(sep=" ", timespec="seconds")
+    category = _MOCK_TICKET_CATEGORIES[intent]
+
+    with database_connection() as connection:
+        # 立即事务保证“检查后写入”不会被并发请求穿透。
+        connection.execute("BEGIN IMMEDIATE")
+        conversation = connection.execute(
+            "SELECT 1 FROM conversations WHERE session_id = ?", (session_id,)
+        ).fetchone()
+        if conversation is None:
+            raise KeyError(session_id)
+
+        mock_ticket = connection.execute(
+            "SELECT 1 FROM simulation_tickets WHERE session_id = ?", (session_id,)
+        ).fetchone()
+        # 原始工单均为会话结束后的业务结果，只作为 Ground truth，不阻断本次演示建单。
+        if mock_ticket is not None:
+            raise DuplicateTicketError(session_id)
+
+        if related_order_id:
+            order = connection.execute(
+                "SELECT 1 FROM orders WHERE session_id = ? AND order_id = ?",
+                (session_id, related_order_id),
+            ).fetchone()
+            if order is None:
+                raise InvalidRelatedOrderError(related_order_id)
+
+        cursor = connection.execute(
+            """
+            INSERT INTO simulation_tickets(
+                session_id, related_order_id, intent, ticket_category,
+                issue_type, status, assignee, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, '待处理', ?, ?)
+            """,
+            (
+                session_id,
+                related_order_id or None,
+                intent,
+                category,
+                issue,
+                assignee,
+                created_at,
+            ),
+        )
+        ticket_id = f"MOCK-{datetime.now():%Y%m%d}-{cursor.lastrowid:04d}"
+        connection.execute(
+            "UPDATE simulation_tickets SET ticket_id = ? WHERE id = ?",
+            (ticket_id, cursor.lastrowid),
+        )
+        connection.commit()
+
+    return {
+        "ticketId": ticket_id,
+        "category": category,
+        "issue": issue,
+        "status": "待处理",
+    }
+
+
+# ---------------------------------------------------------------------------
+# 模块八：情绪识别反馈写入
+# ---------------------------------------------------------------------------
+
+
+def add_emotion_feedback(
+    *,
+    session_id: str,
+    scene: str,
+    message_count: int,
+    messages: list[dict[str, Any]],
+    prediction: dict[str, Any],
+    corrected_emotion: str,
+    feedback_note: str,
+) -> dict[str, Any]:
+    """保存一次客服人工纠正，保留可复现本次识别的完整快照。"""
+    created_at = datetime.now().isoformat(sep=" ", timespec="seconds")
+    with database_connection() as connection:
+        # 反馈只能关联真实会话，避免产生无法回溯的孤立标注。
+        exists = connection.execute(
+            "SELECT 1 FROM conversations WHERE session_id = ?", (session_id,)
+        ).fetchone()
+        if exists is None:
+            raise KeyError(session_id)
+
+        cursor = connection.execute(
+            """
+            INSERT INTO emotion_feedback(
+                session_id, scene, message_count, messages_snapshot,
+                predicted_emotion, corrected_emotion, confidence, confidence_source,
+                emotion_token_logprobs, trend, evidence, summary, prompt_version,
+                attempts, feedback_note, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                session_id,
+                scene,
+                message_count,
+                json.dumps(messages, ensure_ascii=False),
+                prediction["emotion"],
+                corrected_emotion,
+                prediction["confidence"],
+                prediction["confidence_source"],
+                json.dumps(prediction["emotion_token_logprobs"], ensure_ascii=False),
+                prediction["trend"],
+                json.dumps(prediction["evidence"], ensure_ascii=False),
+                prediction["summary"],
+                prediction["prompt_version"],
+                prediction["attempts"],
+                feedback_note,
+                created_at,
+            ),
+        )
+        connection.commit()
+
+    return {
+        "id": cursor.lastrowid,
+        "session_id": session_id,
+        "predicted_emotion": prediction["emotion"],
+        "corrected_emotion": corrected_emotion,
+        "created_at": created_at,
+    }
+
+
+# ---------------------------------------------------------------------------
+# 模块九：演示环境重置
+# ---------------------------------------------------------------------------
+
+
+def reset_simulation_data() -> dict[str, int]:
+    """清空全部仿真消息与 Mock 工单，并返回各自删除数量。
 
     Returns:
-        清空前 ``simulation_messages`` 中的总行数。API 将其作为 ``deleted`` 返回，
-        便于前端或日志确认重置结果。
+        清空前 ``simulation_messages`` 和 ``simulation_tickets`` 的记录数，便于前端
+        或日志确认重置结果。
 
     Writes:
-        只执行 ``DELETE FROM simulation_messages``。原始聊天、会话、订单和工单数据
-        均不受影响，所以该操作可以安全地用于比赛演示前恢复初始状态。
+        只删除两个仿真表。原始聊天、会话、订单、工单和情绪纠正反馈均不受影响，
+        所以该操作可以安全地用于比赛演示前恢复初始状态。
 
     注意：
-        当前设计是全局演示环境，因此一次重置会删除所有会话的仿真回复；如果未来
-        需要多人独立演示，应增加演示实例ID或用户ID，再按实例范围删除。
+        当前设计是全局演示环境，因此一次重置会删除所有会话的仿真回复和 Mock
+        工单；如果未来需要多人独立演示，应增加演示实例ID或用户ID，再按实例范围删除。
     """
     with database_connection() as connection:
-        count = connection.execute("SELECT COUNT(*) FROM simulation_messages").fetchone()[0]
+        message_count = connection.execute(
+            "SELECT COUNT(*) FROM simulation_messages"
+        ).fetchone()[0]
+        ticket_count = connection.execute(
+            "SELECT COUNT(*) FROM simulation_tickets"
+        ).fetchone()[0]
+        connection.execute("DELETE FROM simulation_tickets")
         connection.execute("DELETE FROM simulation_messages")
         connection.commit()
-    return count
+    return {"messages": message_count, "tickets": ticket_count}

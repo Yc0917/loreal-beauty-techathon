@@ -3,8 +3,12 @@ import type {
   ConversationAnalysisResult,
   ConversationSummary,
   EmotionAnalysisResult,
+  EmotionFeedbackPayload,
+  EmotionFeedbackResult,
   IntentAnalysisResult,
   ServiceSession,
+  SimulationTicketCreatePayload,
+  TicketInfo,
 } from './types'
 
 const API_PREFIX = '/api'
@@ -44,12 +48,31 @@ export function analyzeEmotion(
   })
 }
 
+export function submitEmotionFeedback(
+  payload: EmotionFeedbackPayload,
+): Promise<EmotionFeedbackResult> {
+  return request<EmotionFeedbackResult>('/emotion/feedback', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
 export function analyzeIntent(
   messages: Pick<ChatMessage, 'role' | 'text'>[],
 ): Promise<IntentAnalysisResult> {
   return request<IntentAnalysisResult>('/intent/analyze', {
     method: 'POST',
     body: JSON.stringify({ messages }),
+  })
+}
+
+export function createSimulationTicket(
+  sessionId: string,
+  payload: SimulationTicketCreatePayload,
+): Promise<TicketInfo> {
+  return request<TicketInfo>(`/conversations/${encodeURIComponent(sessionId)}/tickets`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
   })
 }
 
@@ -70,6 +93,6 @@ export function createSimulationMessage(sessionId: string, text: string): Promis
   })
 }
 
-export function resetSimulationMessages(): Promise<{ deleted: number }> {
-  return request<{ deleted: number }>('/simulation', { method: 'DELETE' })
+export function resetSimulationMessages(): Promise<{ messages: number; tickets: number }> {
+  return request<{ messages: number; tickets: number }>('/simulation', { method: 'DELETE' })
 }
