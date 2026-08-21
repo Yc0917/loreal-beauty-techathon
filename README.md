@@ -77,6 +77,10 @@
 
 工单创建流程只调用一次 LLM。LLM 负责理解当前可见对话并输出工单类型、问题摘要、置信度和原文 Evidence；关联订单、处理人、工单状态、Mock 工单号、防重复校验和 SQLite 写入均由确定性程序完成。客服必须在确认窗口中审核或修改预填字段后才能创建工单。
 
+![本地 Mock 工单创建确认弹窗](docs/images/ticket-creation.png)
+
+确认窗口会预填 Agent 识别出的工单类型和问题描述，并带入可关联的订单与默认处理人。客服可在提交前修改全部字段；点击“确认创建”后才会写入本地 Mock 工单表，不会向真实千牛提交。
+
 ```text
 当前可见对话
   → LLM 识别工单类型并生成问题摘要
@@ -192,7 +196,8 @@ flowchart LR
 ├── data/
 │   └── customer_service.db            # 客服工作台 SQLite 数据库
 ├── docs/images/
-│   └── frontend-workbench.png         # README 前端页面截图
+│   ├── frontend-workbench.png         # README 前端工作台截图
+│   └── ticket-creation.png            # 本地 Mock 工单创建确认截图
 ├── references/                       # 评测审核和 Prompt 管理参考文档
 ├── smart-cs-multi-agent/             # 早期调研参考项目，非当前主流程
 └── 赛题 1：数据共情者-业务数据.xlsx  # 比赛业务数据
