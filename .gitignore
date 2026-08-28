@@ -30,6 +30,25 @@ frontend/dist/
 tmp/
 *.log
 
+# 商品知识库本地运行时与索引产物
+knowledge_base/neo4j/runtime/
+knowledge_base/neo4j/data/
+knowledge_base/neo4j/logs/
+knowledge_base/neo4j/import/
+knowledge_base/neo4j/neo4j-gephi.gexf
+knowledge_base/graphrag/cache/
+knowledge_base/graphrag/logs/
+knowledge_base/graphrag/output/
+knowledge_base/graphrag/backups/
+knowledge_base/graphrag/input/
+knowledge_base/graphrag/.env
+knowledge_base/graphrag/.venv/
+
+# 本地Mock商品、对话、评测数据及其派生产物
+sample_data/
+knowledge_agent/evaluation/
+knowledge_agent/reports/
+
 # 批量模型标注输出
 emotion_agent/outputs/
 intent_agent/outputs/
@@ -45,3 +64,5 @@ outputs/
 
 # 外部参考项目，保留在本地但不纳入当前仓库
 smart-cs-multi-agent/
+客服agent/
+客服agent.rar

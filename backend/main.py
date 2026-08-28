@@ -42,6 +42,11 @@ from intent_agent import (
     IntentResult,
     create_intent_agent_from_env,
 )
+from knowledge_agent import (
+    KnowledgeAgent,
+    KnowledgeReplyResult,
+    create_knowledge_agent_from_env,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -90,6 +95,16 @@ class ConversationAnalyzeRequest(BaseModel):
     messages: list[ConversationMessage] = Field(min_length=1, max_length=100)
 
 
+class KnowledgeReplyRequest(BaseModel):
+    """Knowledge Agent接收的当前可见会话和可选商品卡片上下文。"""
+
+    session_id: str = Field(min_length=1, max_length=100)
+    scene: str = Field(default="未知", max_length=100)
+    messages: list[ConversationMessage] = Field(min_length=1, max_length=100)
+    product_ids: list[str] = Field(default_factory=list, max_length=10)
+    question: str | None = Field(default=None, max_length=500)
+
+
 class EmotionFeedbackCreate(BaseModel):
     """客服对某一次情绪识别结果提交的人工纠正。"""
 
@@ -127,6 +142,12 @@ def get_intent_agent() -> IntentRecognitionAgent:
 def get_analysis_agent() -> ConversationAnalysisAgent:
     """按进程复用统一的并行会话分析 Graph。"""
     return create_analysis_agent_from_env()
+
+
+@lru_cache(maxsize=1)
+def get_knowledge_agent() -> KnowledgeAgent:
+    """按进程复用Knowledge Agent和已编译的LangGraph。"""
+    return create_knowledge_agent_from_env()
 
 
 @asynccontextmanager
@@ -267,6 +288,26 @@ def analyze_conversation(
     except Exception:
         logger.exception("统一会话分析发生未预期异常")
         raise HTTPException(status_code=502, detail="识别失败")
+
+
+@app.post("/api/knowledge/reply-draft", response_model=KnowledgeReplyResult)
+async def generate_knowledge_reply(
+    payload: KnowledgeReplyRequest,
+) -> KnowledgeReplyResult:
+    """执行只读知识检索并返回草稿，不向千牛自动发送。"""
+    try:
+        return await get_knowledge_agent().generate_reply(
+            session_id=payload.session_id,
+            messages=payload.messages,
+            scene=payload.scene,
+            product_ids=payload.product_ids,
+            question=payload.question,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:
+        logger.exception("Knowledge Agent生成回复失败")
+        raise HTTPException(status_code=502, detail="知识检索或回复生成失败") from error
 
 
 @app.post("/api/conversations/{session_id}/messages", status_code=status.HTTP_201_CREATED)

@@ -1,0 +1,8 @@
+# GraphRAG 2.1.0 与主项目的 OpenAI SDK 版本要求冲突，因此使用独立虚拟环境。
+graphrag==2.1.0
+# GraphRAG 2.1.0 使用的 Typer 与 Click 8.2+ 的帮助参数签名不兼容。
+click>=8.1,<8.2
+# 避免新版本 spaCy 强制要求 Click 8.2+。
+spacy==3.8.4
+typer==0.15.3
+typer-slim==0.15.3

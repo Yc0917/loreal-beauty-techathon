@@ -1,0 +1,130 @@
+# 欧莱雅商品知识库的独立 GraphRAG 配置。
+# 密钥只写入被 Git 忽略的 .env，不得写入本文件。
+
+models:
+  default_chat_model:
+    type: openai_chat
+    api_base: ${GRAPHRAG_CHAT_API_BASE}
+    auth_type: api_key
+    api_key: ${GRAPHRAG_CHAT_API_KEY}
+    model: ${GRAPHRAG_CHAT_MODEL}
+    encoding_model: cl100k_base
+    model_supports_json: true
+    concurrent_requests: 5
+    async_mode: threaded
+    retry_strategy: native
+    max_retries: 3
+    tokens_per_minute: 0
+    requests_per_minute: 0
+
+  default_embedding_model:
+    type: openai_embedding
+    api_base: ${GRAPHRAG_EMBEDDING_API_BASE}
+    auth_type: api_key
+    api_key: ${GRAPHRAG_EMBEDDING_API_KEY}
+    model: ${GRAPHRAG_EMBEDDING_MODEL}
+    encoding_model: cl100k_base
+    concurrent_requests: 5
+    async_mode: threaded
+    retry_strategy: native
+    max_retries: 3
+    tokens_per_minute: 0
+    requests_per_minute: 0
+
+vector_store:
+  default_vector_store:
+    type: lancedb
+    db_uri: output/lancedb
+    container_name: default
+    overwrite: true
+
+embed_text:
+  model_id: default_embedding_model
+  vector_store_id: default_vector_store
+  # 阿里云 text-embedding-v4 单次最多接收 10 条文本。
+  batch_size: 10
+
+input:
+  type: file
+  file_type: text
+  base_dir: "input"
+  encoding: utf-8
+  file_pattern: ".*\\.md$$"
+
+chunks:
+  strategy: tokens
+  size: 500
+  overlap: 100
+  group_by_columns: [id]
+
+cache:
+  type: file
+  base_dir: "cache"
+
+reporting:
+  type: file
+  base_dir: "logs"
+
+output:
+  type: file
+  base_dir: "output"
+
+extract_graph:
+  model_id: default_chat_model
+  prompt: "prompts/extract_graph.txt"
+  entity_types: [商品, 品牌, 成分, 功效, 肤质, 规格, 安全规则, 客服问题]
+  max_gleanings: 1
+
+summarize_descriptions:
+  model_id: default_chat_model
+  prompt: "prompts/summarize_descriptions.txt"
+  max_length: 500
+
+extract_claims:
+  enabled: false
+  model_id: default_chat_model
+  prompt: "prompts/extract_claims.txt"
+  description: "与商品信息、使用场景、成分关系和安全边界有关的事实。"
+  max_gleanings: 1
+
+community_reports:
+  model_id: default_chat_model
+  graph_prompt: "prompts/community_report_graph.txt"
+  text_prompt: "prompts/community_report_text.txt"
+  max_length: 2000
+  max_input_length: 8000
+
+cluster_graph:
+  max_cluster_size: 10
+
+embed_graph:
+  enabled: false
+
+umap:
+  enabled: false
+
+snapshots:
+  graphml: true
+  embeddings: false
+
+local_search:
+  chat_model_id: default_chat_model
+  embedding_model_id: default_embedding_model
+  prompt: "prompts/local_search_system_prompt.txt"
+
+global_search:
+  chat_model_id: default_chat_model
+  map_prompt: "prompts/global_search_map_system_prompt.txt"
+  reduce_prompt: "prompts/global_search_reduce_system_prompt.txt"
+  knowledge_prompt: "prompts/global_search_knowledge_system_prompt.txt"
+
+drift_search:
+  chat_model_id: default_chat_model
+  embedding_model_id: default_embedding_model
+  prompt: "prompts/drift_search_system_prompt.txt"
+  reduce_prompt: "prompts/drift_search_reduce_prompt.txt"
+
+basic_search:
+  chat_model_id: default_chat_model
+  embedding_model_id: default_embedding_model
+  prompt: "prompts/basic_search_system_prompt.txt"

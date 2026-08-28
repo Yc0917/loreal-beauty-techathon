@@ -1,0 +1,8 @@
+prompt_version: graphrag-v1.0.0
+source: Microsoft GraphRAG 2.1.0 init command
+status: unevaluated
+model: unconfigured
+model_parameters: unconfigured
+dataset: loreal-markdown-v1
+baseline_metrics: unavailable
+notes: 首个完整基线快照；尚未配置允许后端调用的模型凭证，因此未执行索引和评测。
